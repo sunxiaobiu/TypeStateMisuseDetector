@@ -1,8 +1,6 @@
 package edu.src;
 
-import edu.model.TypeStateCallback;
-import edu.model.TypeStateComponent;
-import edu.model.TypeStateMethod;
+import edu.model.*;
 import edu.model.sourcefile.ResourceLeakRule;
 import edu.model.sourcefile.TypeStateRule;
 import edu.util.*;
@@ -14,7 +12,10 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.jimple.infoflow.android.manifest.ProcessManifest;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,11 @@ public class Main {
         retrieveAPIOrder4MethodList();
         retrieveMethodOrder4ComponentList();
         retrieveMethodOrder4CallbackList();
+        //ICC
+        boolean IC3Success = prepareMethodList4ICC(apkPath);
+        if(IC3Success){
+            retrieveMethodOrder4ICC();
+        }
 
         long afterDataTransfer = System.currentTimeMillis();
         System.out.println("==>after DATA transfer TIME:" + afterDataTransfer);
@@ -54,10 +60,17 @@ public class Main {
         detectMisusePatterns(GlobalRef.apiCallOrders4Method, "method");
         detectMisusePatterns(GlobalRef.apiCallOrders4Component, "Component");
         detectMisusePatterns(GlobalRef.apiCallOrders4Callback, "Callback");
+        if(CollectionUtils.isNotEmpty(GlobalRef.apiCallOrders4ICC)){
+            detectMisusePatterns(GlobalRef.apiCallOrders4ICC, "ICC");
+        }
 
         detectResourceLeaks(GlobalRef.apiCallOrders4Method, "method");
         detectResourceLeaks(GlobalRef.apiCallOrders4Component, "Component");
         detectResourceLeaks(GlobalRef.apiCallOrders4Callback, "Callback");
+        if(CollectionUtils.isNotEmpty(GlobalRef.apiCallOrders4ICC)){
+            detectResourceLeaks(GlobalRef.apiCallOrders4ICC, "ICC");
+        }
+
 
         long detectMisusePatterns = System.currentTimeMillis();
         System.out.println("==>after detectMisusePatterns TIME:" + detectMisusePatterns);
@@ -202,6 +215,116 @@ public class Main {
                 GlobalRef.apiCallOrders4Component.addAll(apiOrderRes);
             }
         }
+    }
+
+    public static void retrieveMethodOrder4ICC() {
+        //retrieve and write to methodCallOrders
+        for (int i = 0; i < GlobalRef.typeStateICCList.size(); i++) {
+            TypeStateICC typeStateICC = GlobalRef.typeStateICCList.get(i);
+            for (List<SootMethod> methodChainList : typeStateICC.methodChain) {
+                List<SootMethod> newMethodChainList = new ArrayList<>();
+                for (int j = 0; j < methodChainList.size(); j++) {
+                    SootMethod currentSootMethod = methodChainList.get(j);
+                    if (currentSootMethod == null) {
+                        break;
+                    }
+                    if (TypeStateUtil.getFromList(GlobalRef.typeStateMethodList, currentSootMethod) != null) {
+                        newMethodChainList.add(currentSootMethod);
+                    }
+                }
+                if (newMethodChainList.size() >= 2) {
+                    GlobalRef.methodCallOrders4ICC.add(newMethodChainList);
+                }
+            }
+        }
+
+        //retrieve and write to apiCallOrders
+        if (CollectionUtils.isNotEmpty(GlobalRef.methodCallOrders4ICC)) {
+            for (int i = 0; i < GlobalRef.methodCallOrders4ICC.size(); i++) {
+                List<SootMethod> sootMethods = GlobalRef.methodCallOrders4ICC.get(i);
+                List<List<String>> apiOrderRes = getAPIOrder4Method(TypeStateUtil.getFromList(GlobalRef.typeStateMethodList, sootMethods.get(0)));
+                for (int m = 1; m < sootMethods.size(); m++) {
+                    List<List<String>> currentAPIOrder = getAPIOrder4Method(TypeStateUtil.getFromList(GlobalRef.typeStateMethodList, sootMethods.get(m)));
+                    List<List<String>> res = ListHelper.combine2List(apiOrderRes, currentAPIOrder);
+                    apiOrderRes = res;
+                }
+                GlobalRef.apiCallOrders4ICC.addAll(apiOrderRes);
+            }
+        }
+    }
+
+
+    public static boolean prepareMethodList4ICC(String apkPath) throws IOException {
+        //extract IC3 results[className+methodName ==> clazzName]
+        String apkName = Regex.getSubUtilSimple(apkPath.replace(".apk", ""), "([^/]*$)");
+        File apkFile = new File(GlobalRef.IC3_PATH + apkName+".txt");
+        if(!apkFile.exists()){
+            return false;
+        }
+        List<IC3> IC3List = new ArrayList<>();
+        List<String> ic3File = new ArrayList<>(Files.readAllLines(apkFile.toPath(), StandardCharsets.UTF_8));
+        int startLineNumber = 0;
+        boolean hasIC3Res = false;
+        for (int i = 0; i < ic3File.size(); i++) {
+            String currentLine = ic3File.get(i);
+            if(currentLine.equals("*****Result*****")){
+                startLineNumber = i + 1;
+                hasIC3Res = true;
+                break;
+            }
+        }
+
+        if(!hasIC3Res){
+            return false;
+        }
+
+        for (int i = startLineNumber; i < ic3File.size() && i+2<ic3File.size(); i++) {
+            String currentLine = ic3File.get(i);
+            String currentLineClazz = ic3File.get(i+2);
+            if(currentLine.startsWith(apkName) && currentLineClazz.contains("clazz=")){
+                String className = Regex.getSubUtilSimple(currentLine, "(^.*/)").replace("/","");
+                String methodName = Regex.getSubUtilSimple(currentLine, "( .*?\\()").replace(" ","").replace("(", "");
+                String clazzName = Regex.getSubUtilSimple(currentLineClazz, "(clazz=.*?,)").replace("clazz=","").replace(",","").replace("/", ".");
+                if(StringUtils.isNotBlank(className) && StringUtils.isNotBlank(methodName) && StringUtils.isNotBlank(clazzName)){
+                    IC3List.add(new IC3(className, methodName, clazzName));
+                    //System.out.println(className + "---" + methodName + "===="+clazzName);
+                }
+            }
+        }
+
+        //retrieve method order for ICC
+        for(IC3 ic3 : IC3List){
+            List<List<SootMethod>> leftMethodChain = new ArrayList<>();
+            List<List<SootMethod>> rightMethodChain = new ArrayList<>();
+            if(CollectionUtils.isNotEmpty(GlobalRef.typeStateComponentList)){
+                for(TypeStateComponent typeStateComponent : GlobalRef.typeStateComponentList){
+                    for(SootMethod sm : typeStateComponent.entryPointClass.getMethods()){
+                        if(sm.getReturnType().toString().equals(ic3.className)){
+                            leftMethodChain = typeStateComponent.methodChain;
+                        }
+                        if(sm.getReturnType().toString().equals(ic3.clazzName)){
+                            rightMethodChain.addAll(typeStateComponent.methodChain);
+                        }
+                    }
+                }
+            }
+
+
+            TypeStateICC typeStateICC = new TypeStateICC();
+            typeStateICC.ic3 = ic3;
+            GlobalRef.typeStateICCList.add(typeStateICC);
+            if(CollectionUtils.isNotEmpty(leftMethodChain) && CollectionUtils.isNotEmpty(rightMethodChain)){
+                for(List<SootMethod> leftList : leftMethodChain){
+                    for(List<SootMethod> rightList : rightMethodChain){
+                        List<SootMethod> combinedList = new ArrayList<>();
+                        combinedList.addAll(leftList);
+                        combinedList.addAll(rightList);
+                        typeStateICC.methodChain.add(combinedList);
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     public static void retrieveMethodOrder4CallbackList() {

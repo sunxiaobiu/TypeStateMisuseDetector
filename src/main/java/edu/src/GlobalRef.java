@@ -2,6 +2,7 @@ package edu.src;
 
 import edu.model.TypeStateCallback;
 import edu.model.TypeStateComponent;
+import edu.model.TypeStateICC;
 import edu.model.TypeStateMethod;
 import edu.model.sourcefile.ResourceLeakRule;
 import edu.model.sourcefile.TypeStateRule;
@@ -17,6 +18,7 @@ public class GlobalRef
 	 */
 	public static List<TypeStateMethod> typeStateMethodList = new ArrayList<>();
 	public static List<TypeStateComponent> typeStateComponentList = new ArrayList<>();
+	public static List<TypeStateICC> typeStateICCList = new ArrayList<>();
 	public static List<TypeStateCallback> typeStateCallbackList = new ArrayList<>();
 
 	public static List<TypeStateRule> typeStateRules = new ArrayList<>();
@@ -25,9 +27,11 @@ public class GlobalRef
 
 	public static List<List<String>> apiCallOrders4Method = new ArrayList<>();
 	public static List<List<String>> apiCallOrders4Component = new ArrayList<>();
+	public static List<List<String>> apiCallOrders4ICC = new ArrayList<>();
 	public static List<List<String>> apiCallOrders4Callback = new ArrayList<>();
 
 	public static List<List<SootMethod>> methodCallOrders4Component = new ArrayList<>();
+	public static List<List<SootMethod>> methodCallOrders4ICC = new ArrayList<>();
 	public static List<List<SootMethod>> methodCallOrders4Callback = new ArrayList<>();
 
 	public static String typeStateRulesPath = "./resources/TypeStateRules.txt";
@@ -38,8 +42,9 @@ public class GlobalRef
 	public static Integer maxSDKVersion = 0;
 	public static Integer targetSDKVersion = 0;
 
-
 	public static final String FIELD_VERSION_SDK_INT = "<android.os.Build$VERSION: int SDK_INT>";
 	public static final String FIELD_VERSION_SDK = "<android.os.Build$VERSION: java.lang.String SDK>";
+
+	public static final String IC3_PATH = "/home/xsun0035/rm46_scratch/IC3_output/";
 
 }
