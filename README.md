@@ -1,5 +1,24 @@
 # TypeStateMisuseDetector
-Finite state machines are useful for modelling complex flows and tracking states in software systems. Android is no exception, which provides staggering numbers of typestate APIs to perform state transition operations. The wide adoption of the typestate APIs coexists with inappropriate usage, leading to software defects and poor user experience. However, little is known about typestate usage in real-world Android applications and the impact of their misuse. To mitigate this research gap, we first conduct a preliminary study on the Android official documents (i.e., from API level 1 to 31) to extract typestate rules that Android apps should comply with. Then, we propose a novel prototype tool, \tool{}, to detect typestate misuses by performing inter-procedural data-flow analysis that checks a given Android app for violations of the found typestate rules. Experimental results on thousands of real-world Android apps show that \tool{} is effective in detecting typestate misuses in Android applications, including both incompatibility and inappropriate usage. We also show that \tool{} can outperform state-of-the-art API misuse detectors and dynamic testing techniques in pinpointing typestate misuses.
+Android provides a large number of typestate rules to support
+complex tasks. For example, a method must be called before another
+method is called or it can only be called once a given resource is
+in a certain state. Such rules are often supported through typestate
+APIs. Unfortunately, these typestate APIs might be misused by app
+developers, leading to software defects and subsequently poor user
+experiences. Little is currently known about typestate usage or
+misuse in real-world Android apps. Hence we propose a novel
+research tool, DroidTEC, which aims at detecting typestate misuses
+through path-sensitive and inter-procedural data-flow analysis. We
+first conducted a preliminary study to mine typestate rules offered
+by Android and harvested a total of 736 distinct typestate rules.
+We then design and implement DroidTEC to scan Android apps by
+checking if they have violated any of the aforementioned typestate
+rules. Experimental results on 10,000 Android apps from Google
+Play show that DroidTEC is effective in detecting typestate misuses
+in Android applications – it locates 88,732 misuses with an accuracy
+of 87.3%. DroidTEC also outperforms the state-of-the-art typestate
+analyzers and resource leak detectors when applied to pinpointing
+typestate misuses.
 
 [//]: # (Our paper has been accepted at ASE 2022.)
 
@@ -7,22 +26,20 @@ Finite state machines are useful for modelling complex flows and tracking states
 
 
 ## Setup
-The following is required to set up JUnitTestGen:
+The following is required to set up DroidTEC:
 * MAC system
 * IntelliJ IDEA
 
 ##### Step 1: Load dependencies to your local repository
-* git clone git@github.com:SMAT-Lab/JUnitTestGen.git
-* cd junittestgen
-* ./res/loadDependencies.sh
+* git clone
+* cd TypeStateMisuseDetector
 
 ##### Step 2: build package：
 mvn clean install
 
-##### Step 3: example of running JUnitTestGen(3 parameters):
-* Parameters are needed here: [your_apk_path.apk],[path of android platform],[path of result.csv]
-* Example: your_path/905a4f82bc194334a046afa9bf29eed7.apk, ~/Library/Android/sdk/platforms, your_path/result.csv
+##### Step 3: example of running DroidTEC(3 parameters):
+* Parameters are needed here: [your_apk_path.apk],[path of android platform]
+* Example: your_path/xxx.apk, ~/Library/Android/sdk/platforms
        
 ## Output
-* Refer to sootOutput/ folder to check all the generated test cases.
-* Refer to [path of result.csv] to check the map of test case name and its corresponding targetAPI.
+* Refer to the output to check all the misuse cases.
