@@ -30,6 +30,8 @@ public class GlobalRef
 	public static List<List<String>> apiCallOrders4ICC = new ArrayList<>();
 	public static List<List<String>> apiCallOrders4Callback = new ArrayList<>();
 
+	public static List<SootMethod> apiCallOrders4Method_correspondingTargetMethod = new ArrayList<>();
+
 	public static List<List<SootMethod>> methodCallOrders4Component = new ArrayList<>();
 	public static List<List<SootMethod>> methodCallOrders4ICC = new ArrayList<>();
 	public static List<List<SootMethod>> methodCallOrders4Callback = new ArrayList<>();
@@ -45,6 +47,6 @@ public class GlobalRef
 	public static final String FIELD_VERSION_SDK_INT = "<android.os.Build$VERSION: int SDK_INT>";
 	public static final String FIELD_VERSION_SDK = "<android.os.Build$VERSION: java.lang.String SDK>";
 
-	public static final String IC3_PATH = "/home/xsun0035/rm46_scratch/IC3_output/";
+	public static final String IC3_PATH = "/Users/xsun0035/Desktop/";
 
 }

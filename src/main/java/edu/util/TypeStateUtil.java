@@ -48,6 +48,7 @@ public class TypeStateUtil {
                 if (targetMethod.getSignature().contains("dummyMainClass") || !targetMethod.isConcrete()) {
                     continue;
                 }
+
                 DirectedGraph<Unit> ug = baseICFG.getOrCreateUnitGraph(targetMethod.retrieveActiveBody());
                 Iterator<Unit> uit = ug.iterator();
                 List<Unit> units = new ArrayList<>();
@@ -84,10 +85,6 @@ public class TypeStateUtil {
 
             CFGUtil.getMethodPathsFromRoot2Leaf(entryPointMethod, methodPathList, 0, entryPointMethod, new ArrayList<>());
         }
-        //System.out.println("typeStateComponentList size:"+GlobalRef.typeStateComponentList.size());
-//        for(TypeStateComponent typeStateComponent : GlobalRef.typeStateComponentList){
-//            System.out.println("typeStateComponent size:"+typeStateComponent.methodChain.size());
-//        }
 
         /**
          * =============[Construct methodPathList(For callback methods) Start]=============

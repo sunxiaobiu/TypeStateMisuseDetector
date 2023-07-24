@@ -57,6 +57,8 @@ public class ApplicationClassFilter {
                 || className.startsWith("org.w3c.dom.") || className.startsWith("com.google.")
                 || className.startsWith("com.android.") || className.startsWith("org.apache.")
                 || className.startsWith("soot.")
+                || className.startsWith("kotlinx.")
+                || className.startsWith("kotlin.")
                 || className.startsWith("androidx.");
     }
 
@@ -66,6 +68,8 @@ public class ApplicationClassFilter {
                 || className.startsWith("<org.w3c.dom.") || className.startsWith("<com.google.")
                 || className.startsWith("<com.android.") || className.startsWith("<org.apache.")
                 || className.startsWith("<soot.")
+                || className.startsWith("<kotlinx.")
+                || className.startsWith("<kotlin.")
                 || className.startsWith("<androidx.");
     }
 

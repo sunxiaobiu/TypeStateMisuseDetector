@@ -7,7 +7,6 @@ import edu.util.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.xmlpull.v1.XmlPullParserException;
-import soot.SootClass;
 import soot.SootMethod;
 import soot.Unit;
 import soot.jimple.infoflow.android.manifest.ProcessManifest;
@@ -75,17 +74,17 @@ public class Main {
         long detectMisusePatterns = System.currentTimeMillis();
         System.out.println("==>after detectMisusePatterns TIME:" + detectMisusePatterns);
 
-        if (CollectionUtils.isNotEmpty(entryPointHelper.callbackClasses)) {
-            for (String s : entryPointHelper.callbackClasses) {
-                System.out.println("[callbackClasses:]" + s);
-            }
-        }
-        if (CollectionUtils.isNotEmpty(entryPointHelper.callbackMethods.keySet())) {
-            for (SootClass sc : entryPointHelper.callbackMethods.keySet()) {
-                System.out.println("[callbackMethods host soot class:]" + sc);
-                System.out.println("[callbackMethods callback Methods:]" + entryPointHelper.callbackMethods.get(sc));
-            }
-        }
+//        if (CollectionUtils.isNotEmpty(entryPointHelper.callbackClasses)) {
+//            for (String s : entryPointHelper.callbackClasses) {
+//                System.out.println("[callbackClasses:]" + s);
+//            }
+//        }
+//        if (CollectionUtils.isNotEmpty(entryPointHelper.callbackMethods.keySet())) {
+//            for (SootClass sc : entryPointHelper.callbackMethods.keySet()) {
+//                System.out.println("[callbackMethods host soot class:]" + sc);
+//                System.out.println("[callbackMethods callback Methods:]" + entryPointHelper.callbackMethods.get(sc));
+//            }
+//        }
     }
 
     private static void getMinTargetSDKVersion(String apkPath) throws IOException, XmlPullParserException {
@@ -101,8 +100,15 @@ public class Main {
     }
 
     private static void detectMisusePatterns(List<List<String>> apiCallOrders, String flag) {
+        Set<String> logRes4Method = new HashSet<>();
+        Set<String> logRes4NonMethod = new HashSet<>();
         for (TypeStateRule typeStateRule : GlobalRef.typeStateRules) {
-            for (List<String> apiCallOrderList : apiCallOrders) {
+            for(int listNum = 0; listNum < apiCallOrders.size(); listNum++){
+                SootMethod targetMethod = null;
+                if(flag.equals("method")){
+                    targetMethod =  GlobalRef.apiCallOrders4Method_correspondingTargetMethod.get(listNum);
+                }
+                List<String> apiCallOrderList = apiCallOrders.get(listNum);
                 //apiCallOrderList indicate one api order call in real-world apps
                 boolean isApiCallOrderListMisuse = false;
                 for (int i = 0; i < apiCallOrderList.size(); i++) {
@@ -114,31 +120,60 @@ public class Main {
                         if (typeStateRule.isCorrect) {
                             if (!TypeStateRule.containsTypeStateAPIStmt(subList, typeStateRule.beforeAPIs)) {
                                 isApiCallOrderListMisuse = true;
+                                String specificReason = "[lack of]" + ListHelper.listToString(typeStateRule.beforeAPIs) + "[before]" + apiCallOrderList.get(i);
+                                if(flag.equals("method")){
+                                    logRes4Method.add(logAPIMisuseRes(flag, apiCallOrderList, isApiCallOrderListMisuse, specificReason, targetMethod));
+                                }else{
+                                    logRes4NonMethod.add(logAPIMisuseRes(flag, apiCallOrderList, isApiCallOrderListMisuse, specificReason, targetMethod));
+                                }
                             }
                         } else {
                             if (TypeStateRule.containsTypeStateAPIStmt(subList, typeStateRule.beforeAPIs)) {
                                 isApiCallOrderListMisuse = true;
+                                String specificReason = "[Should not invoke]" + ListHelper.listToString(typeStateRule.beforeAPIs) + "[before]" + apiCallOrderList.get(i);
+                                if(flag.equals("method")){
+                                    logRes4Method.add(logAPIMisuseRes(flag, apiCallOrderList, isApiCallOrderListMisuse, specificReason, targetMethod));
+                                }else{
+                                    logRes4NonMethod.add(logAPIMisuseRes(flag, apiCallOrderList, isApiCallOrderListMisuse, specificReason, targetMethod));
+                                }
                             }
                         }
                     }
                 }
-
-                if(apiCallOrderList.contains("<android.webkit.CookieSyncManager: android.webkit.CookieSyncManager getInstance()>") && (GlobalRef.minSDKVersion > 18 || GlobalRef.targetSDKVersion > 18)){
-
-                }else if(ApplicationClassFilter.containsStartRecording(apiCallOrderList) && (GlobalRef.targetSDKVersion < 31)){
-
-                }else{
-                    if (isApiCallOrderListMisuse) {
-                        if(flag.equals("method")){
-                            System.out.println("======Misuse=======" + flag + ":" + apiCallOrderList);
-                        }else{
-                            System.out.println("======Misuse=======" + flag + ":" + apiCallOrderList);
-                        }
-                    }
-                }
-
             }
         }
+
+        if(CollectionUtils.isNotEmpty(logRes4Method)){
+            for(String misuseLog : logRes4Method){
+                if(StringUtils.isNotBlank(misuseLog)){
+                    System.out.println(misuseLog);
+                }
+            }
+        }
+
+        if(CollectionUtils.isNotEmpty(logRes4NonMethod)){
+            for(String misuseLog : logRes4NonMethod){
+                if(StringUtils.isNotBlank(misuseLog)){
+                    System.out.println(misuseLog);
+                }
+            }
+        }
+    }
+
+    private static String logAPIMisuseRes(String flag, List<String> apiCallOrderList, boolean isApiCallOrderListMisuse, String specificReason, SootMethod targetMethod) {
+        if(apiCallOrderList.contains("<android.webkit.CookieSyncManager: android.webkit.CookieSyncManager getInstance()>") && (GlobalRef.minSDKVersion > 18 || GlobalRef.targetSDKVersion > 18)){
+
+        }else if(ApplicationClassFilter.containsStartRecording(apiCallOrderList) && (GlobalRef.targetSDKVersion < 31)){
+
+        }else{
+            if (isApiCallOrderListMisuse && targetMethod != null) {
+                return "======Misuse=======" + flag + ":" + specificReason + "; Origin apiCallOrderList is:" + apiCallOrderList + "; targetMethod:"+targetMethod.getSignature();
+            }
+            if(isApiCallOrderListMisuse && targetMethod == null){
+                return "======Misuse=======" + flag + ":" + specificReason + "; Origin apiCallOrderList is:" + apiCallOrderList;
+            }
+        }
+        return "";
     }
 
     private static boolean moreThan2(List<String> apis){
@@ -161,8 +196,15 @@ public class Main {
     }
 
     private static void detectResourceLeaks(List<List<String>> apiCallOrders, String flag) {
+        Set<String> logRes4Method = new HashSet<>();
+        Set<String> logRes4NonMethod = new HashSet<>();
         for (ResourceLeakRule resourceLeakRule : GlobalRef.resourceLeakRules) {
-            for (List<String> apiCallOrderList : apiCallOrders) {
+            for(int listNum = 0; listNum < apiCallOrders.size(); listNum++){
+                SootMethod targetMethod = null;
+                if(flag.equals("method")){
+                    targetMethod =  GlobalRef.apiCallOrders4Method_correspondingTargetMethod.get(listNum);
+                }
+                List<String> apiCallOrderList = apiCallOrders.get(listNum);
 
                 boolean isApiCallOrderHasResourceLeak = false;
                 for (int i = 0; i < apiCallOrderList.size(); i++) {
@@ -171,13 +213,43 @@ public class Main {
                         List<String> subList = apiCallOrderList.subList(i+1, apiCallOrderList.size());
                         if (!ResourceLeakRule.containsResourceLeakAPIStmt(subList, resourceLeakRule.afterAPI)) {
                             isApiCallOrderHasResourceLeak =  true;
+                            String specificReason = "[Should invoke]" + resourceLeakRule.afterAPI.getAPIString() + "[after]" + apiCallOrderList.get(i);
+                            if(flag.equals("method")){
+                                logRes4Method.add(logResourceLeakRes(flag, apiCallOrderList, isApiCallOrderHasResourceLeak, specificReason, targetMethod));
+                            }else{
+                                logRes4NonMethod.add(logResourceLeakRes(flag, apiCallOrderList, isApiCallOrderHasResourceLeak, specificReason, targetMethod));
+                            }
                         }
                     }
                 }
-                if (isApiCallOrderHasResourceLeak) {
-                    System.out.println("======ResourceLeak=======" + flag + ":" + apiCallOrderList);
+            }
+        }
+
+
+        if(CollectionUtils.isNotEmpty(logRes4Method)){
+            for(String misuseLog : logRes4Method){
+                if(StringUtils.isNotBlank(misuseLog)){
+                    System.out.println(misuseLog);
                 }
             }
+        }
+
+        if(CollectionUtils.isNotEmpty(logRes4NonMethod)){
+            for(String misuseLog : logRes4NonMethod){
+                if(StringUtils.isNotBlank(misuseLog)){
+                    System.out.println(misuseLog);
+                }
+            }
+        }
+    }
+
+    private static String logResourceLeakRes(String flag, List<String> apiCallOrderList, boolean isApiCallOrderHasResourceLeak, String specificReason, SootMethod targetMethod) {
+        if (isApiCallOrderHasResourceLeak && targetMethod != null) {
+            return "======ResourceLeak=======" + flag + ":" + specificReason + "; Origin apiCallOrderList is:" + apiCallOrderList + "; targetMethod:"+targetMethod.getSignature();
+        }else if(isApiCallOrderHasResourceLeak && targetMethod == null){
+            return "======ResourceLeak=======" + flag + ":" + specificReason + "; Origin apiCallOrderList is:" + apiCallOrderList;
+        }else{
+            return "";
         }
     }
 
@@ -385,6 +457,7 @@ public class Main {
                 }
             }
             GlobalRef.apiCallOrders4Method.add(typeStateApiOrderList);
+            GlobalRef.apiCallOrders4Method_correspondingTargetMethod.add(currentTypeStateMethod.sootMethod);
         }
     }
 

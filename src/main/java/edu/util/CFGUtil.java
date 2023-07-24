@@ -4,15 +4,19 @@ import edu.model.TypeStateComponent;
 import edu.model.TypeStateMethod;
 import edu.src.GlobalRef;
 import org.apache.commons.collections4.CollectionUtils;
+import soot.Body;
 import soot.Scene;
 import soot.SootMethod;
 import soot.Unit;
 import soot.jimple.toolkits.callgraph.Edge;
 import soot.toolkits.graph.DirectedGraph;
+import soot.toolkits.graph.ExceptionalUnitGraph;
+import soot.util.cfgcmd.CFGToDotGraph;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CFGUtil {
 
@@ -32,7 +36,7 @@ public class CFGUtil {
             if (!typeStateMethod.unitChain.contains(Arrays.asList(path))) {
                 typeStateMethod.unitChain.add(Arrays.asList(path));
             }
-            System.out.println(typeStateMethod.toString());
+            //System.out.println(typeStateMethod.toString());
         } else {
             for (Unit succsNode : succsNodes) {
                 getPathsFromRoot2Leaf(succsNode, path, pathLen, icfg, sootMethod, visited);
@@ -41,23 +45,24 @@ public class CFGUtil {
     }
 
     public static void getMethodPathsFromRoot2Leaf(SootMethod sootMethod, SootMethod[] path, int pathLen, SootMethod entryPointMethod, List<SootMethod> visited) {
-        if (sootMethod == null || visited.contains(sootMethod) || ApplicationClassFilter.isClassSystemPackage(sootMethod.getSignature())
-        )
+        if (sootMethod == null || ListHelper.containsSootMethod(visited, sootMethod))
             return;
 
         /* append this node to the path array */
-        path[pathLen] = sootMethod;
-        pathLen++;
+        if(!ApplicationClassFilter.isClassSystemPackage(sootMethod.getSignature())){
+            path[pathLen] = sootMethod;
+            pathLen++;
+        }
         visited.add(sootMethod);
 
         /* it's a leaf, so print the path that lead to here  */
         Iterator<Edge> edgeIterator = Scene.v().getCallGraph().edgesOutOf(sootMethod);
         if (!edgeIterator.hasNext()) {
             TypeStateComponent typeStateComponent = TypeStateUtil.getElementFromList(GlobalRef.typeStateComponentList, entryPointMethod);
-            if (!typeStateComponent.methodChain.contains(Arrays.asList(path))) {
-                typeStateComponent.methodChain.add(Arrays.asList(path));
+            List<SootMethod> pathList = Arrays.stream(path).collect(Collectors.toList());
+            if(!ListHelper.twoDimenListContainOneDimenList(typeStateComponent.methodChain, pathList)){
+                typeStateComponent.methodChain.add(pathList);
             }
-            System.out.println(typeStateComponent.toString());
         } else {
             while(edgeIterator.hasNext()){
                 Edge edge = edgeIterator.next();

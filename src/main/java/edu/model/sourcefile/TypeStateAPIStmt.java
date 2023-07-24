@@ -41,4 +41,11 @@ public class TypeStateAPIStmt {
 
         return StringUtils.equals(this.fullPathClassName, thatClassName) && StringUtils.equals(this.methodName, thatMethodName);
     }
+
+    public String getAPIString() {
+        return "<" + fullPathClassName +
+                " " + returnType + ":" +
+                " " + methodName +
+                "(...)>";
+    }
 }
