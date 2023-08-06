@@ -706,3 +706,4 @@ IllegalStateException;<android.service.voice.VoiceInteractionSession: void finis
 <android.window.WindowContextController: void attachToDisplayArea(int,int,Bundle)>;<android.window.WindowContextController: void attachToWindowToken(IBinder)>
 IllegalStateException;<android.window.WindowContextController: void attachToDisplayArea(int,int,Bundle)>;<android.window.WindowContextController: void attachToDisplayArea(int,int,Bundle)>
 IllegalStateException;<android.window.WindowTokenClient: void attachContext(Context)>;<android.window.WindowTokenClient: void attachContext(Context)>
+<java.security.MessageDigest: void update(byte[],int,int)>;<java.security.MessageDigest: byte[] digest()>
